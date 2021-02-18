@@ -2,12 +2,13 @@
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Rendering;
+using System.Linq;
 
 public partial class CameraRenderer
 {
-	static ShaderTagId
-		unlitShaderTagId = new ShaderTagId("SRPDefaultUnlit"),	
-		litShaderTagId = new ShaderTagId("CustomLit");
+	static ShaderTagId unlitShaderTagId = new ShaderTagId("SRPDefaultUnlit"),
+						litShaderTagId = new ShaderTagId("CustomLit");
+
 
 	static int frameBufferId = Shader.PropertyToID("_CameraFrameBuffer");
 
@@ -31,12 +32,18 @@ public partial class CameraRenderer
 
 	bool useHDR;
 
+	bool useScaledRendering;
+
+	Vector2Int bufferSize;
+
 	public void Render(ScriptableRenderContext context, Camera camera, bool allowHDR, bool useDynamicBatching, 
 		bool useGPUInstancing, bool useLightsPerObject, ShadowSettings shadowSettings, PostFXSettings postFXSettings,
-		int colorLUTResolution)
+		int colorLUTResolution, int MSAA, float renderScale)
 	{
 		this.context = context;
 		this.camera = camera;
+
+		useScaledRendering = renderScale < 0.99f || renderScale > 1.01f;
 
 		PrepareBuffer();
 		PrepareForSceneWindow();
@@ -47,20 +54,31 @@ public partial class CameraRenderer
 		}
 
 		useHDR = allowHDR && camera.allowHDR;
+		if(useScaledRendering)
+        {
+			bufferSize.x = (int)(camera.pixelWidth * renderScale);
+			bufferSize.y = (int)(camera.pixelHeight * renderScale);
+        }
+		else
+        {
+			bufferSize.x = camera.pixelWidth;
+			bufferSize.y = camera.pixelHeight;
+        }
 		
 		buffer.BeginSample(SampleName);
 		ExecuteBuffer();
 		lighting.Setup(context, cullingResults, shadowSettings, useLightsPerObject);
-		postFXStack.Setup(context, camera, postFXSettings, useHDR, colorLUTResolution);
+		postFXStack.Setup(context, camera, bufferSize, postFXSettings, useHDR, colorLUTResolution);
 		buffer.EndSample(SampleName);
 
-		Setup();
+		Setup(MSAA);
 
 		DrawVisibleGeometry(useDynamicBatching, useGPUInstancing, useLightsPerObject);	
 		DrawUnsupportedShaders();
 
 		DrawGizmosBeforeFX();
-		if(postFXStack.IsActive)
+
+		if (postFXStack.IsActive)
         {
 			postFXStack.Render(frameBufferId);
         }
@@ -81,7 +99,7 @@ public partial class CameraRenderer
 		return false;
 	}
 
-	void Setup()
+	void Setup(int MSAA)
 	{
 		context.SetupCameraProperties(camera);
 
@@ -89,12 +107,14 @@ public partial class CameraRenderer
 
 		if(postFXStack.IsActive)
         {
-			if(flags > CameraClearFlags.Color)
+			int renderSamples = camera.allowMSAA ? MSAA : 1;
+			if (flags > CameraClearFlags.Color)
             {
 				flags = CameraClearFlags.Color;
             }
-			buffer.GetTemporaryRT(frameBufferId, camera.pixelWidth, camera.pixelHeight, 32,
-				FilterMode.Bilinear, useHDR ? RenderTextureFormat.DefaultHDR : RenderTextureFormat.Default);
+			buffer.GetTemporaryRT(frameBufferId, bufferSize.x, bufferSize.y, 32,
+				FilterMode.Bilinear, useHDR ? RenderTextureFormat.DefaultHDR : RenderTextureFormat.Default, 
+				RenderTextureReadWrite.Default, renderSamples);
 			buffer.SetRenderTarget(frameBufferId, RenderBufferLoadAction.DontCare, RenderBufferStoreAction.Store);
         }
 

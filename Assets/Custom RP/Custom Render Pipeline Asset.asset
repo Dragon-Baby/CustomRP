@@ -12,16 +12,16 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: bc2108f6505750049bdae6f4f7913b80, type: 3}
   m_Name: Custom Render Pipeline Asset
   m_EditorClassIdentifier: 
-  useDynamicBatching: 1
-  useGPUInstancing: 1
-  useSRPBatcher: 1
-  useLightsPerObject: 1
+  DynamicBatching: 1
+  GPUInstancing: 1
+  SRPBatcher: 1
+  LightsPerObject: 1
   shadows:
     maxDistance: 100
     distanceFade: 0.1
     directional:
       atlasSize: 1024
-      filter: 3
+      filter: 0
       cascadeCount: 4
       cascadeRatio1: 0.1
       cascadeRatio2: 0.25
@@ -30,7 +30,10 @@ MonoBehaviour:
       cascadeBlend: 1
     other:
       atlasSize: 1024
-      filter: 3
+      filter: 2
   postFXSettings: {fileID: 11400000, guid: 0fcd1fb164387654490f0d90866fa4bb, type: 2}
-  allowHDR: 1
+  HDR: 1
+  RenderScale: 2
   colorLUTResolution: 32
+  TAAShader: {fileID: 4800000, guid: c892a34685207fe4c9c410a8663948c7, type: 3}
+  MSAA: 8

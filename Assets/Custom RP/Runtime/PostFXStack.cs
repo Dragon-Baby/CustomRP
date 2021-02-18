@@ -20,7 +20,8 @@ public partial class PostFXStack
 		ColorGradingACES,
 		ColorGradingNeutral,
 		ColorGradingReinhard,
-		Final
+		Final,
+		FinalRescale
 	}
 
 	const string bufferName = "Post FX";
@@ -52,7 +53,8 @@ public partial class PostFXStack
 		smhRangeId = Shader.PropertyToID("_SMHRange");
 
 	int finalSrcBlendId = Shader.PropertyToID("_FinalSrcBlend"),
-		finalDstBlendId = Shader.PropertyToID("_FinalDstBlend");
+		finalDstBlendId = Shader.PropertyToID("_FinalDstBlend"),
+		finalResultId = Shader.PropertyToID("_FinalResult");
 
 	CommandBuffer buffer = new CommandBuffer
 	{
@@ -73,6 +75,8 @@ public partial class PostFXStack
 
 	public bool IsActive => settings != null;
 
+	Vector2Int bufferSize;
+
 	public PostFXStack()
 	{
 		bloomPyramidId = Shader.PropertyToID("_BloomPyramid0");
@@ -82,8 +86,10 @@ public partial class PostFXStack
 		}
 	}
 
-	public void Setup(ScriptableRenderContext context, Camera camera, PostFXSettings settings, bool useHDR, int colorLUTResolution)
+	public void Setup(ScriptableRenderContext context, Camera camera, Vector2Int bufferSize, PostFXSettings settings, 
+		bool useHDR, int colorLUTResolution)
 	{
+		this.bufferSize = bufferSize;
 		this.colorLUTResolution = colorLUTResolution;
 		this.useHDR = useHDR;
 		this.context = context;
@@ -110,7 +116,17 @@ public partial class PostFXStack
 	bool DoBloom(int sourceId)
 	{
 		BloomSettings bloom = settings.Bloom;
-		int width = camera.pixelWidth / 2, height = camera.pixelHeight / 2;
+		int width, height;
+		if (bloom.ignoreRenderScale)
+		{
+			width = camera.pixelWidth / 2;
+			height = camera.pixelHeight / 2;
+		}
+        else
+        {
+			width = bufferSize.x / 2;
+			height = bufferSize.y / 2;
+		}
 
 		if (bloom.maxIterations == 0 || bloom.intensity <= 0f ||
 			height < bloom.downscaleLimit * 2 || width < bloom.downscaleLimit * 2)
@@ -191,7 +207,7 @@ public partial class PostFXStack
 		}
 		buffer.SetGlobalFloat(bloomIntensityId, finalIntensity);
 		buffer.SetGlobalTexture(fxSource2Id, sourceId);
-		buffer.GetTemporaryRT(bloomResultId, camera.pixelWidth, camera.pixelHeight, 0, FilterMode.Bilinear, format);
+		buffer.GetTemporaryRT(bloomResultId, bufferSize.x, bufferSize.y, 0, FilterMode.Bilinear, format);
 		Draw(fromId, bloomResultId, finalPass);
 		buffer.ReleaseTemporaryRT(fromId);
 		buffer.EndSample("Bloom");
@@ -263,7 +279,18 @@ public partial class PostFXStack
 		Draw(sourceId, colorGradingLUTId, pass);
 
 		buffer.SetGlobalVector(colorGradingLUTParametersId, new Vector4(1f / lutWidth, 1f / lutHeight, lutHeight - 1f));
-		Draw(sourceId, BuiltinRenderTextureType.CameraTarget, Pass.Final);
+		if(bufferSize.x == camera.pixelWidth)
+        {
+			DrawFinal(sourceId, Pass.Final);
+		}
+        else
+        {
+			buffer.GetTemporaryRT(finalResultId, bufferSize.x, bufferSize.y, 0,
+				FilterMode.Bilinear, RenderTextureFormat.Default);
+			Draw(sourceId, finalResultId, Pass.Final);
+			DrawFinal(finalResultId, Pass.FinalRescale);
+			buffer.ReleaseTemporaryRT(finalResultId);
+		}
 		buffer.ReleaseTemporaryRT(colorGradingLUTId);
 	}
 
@@ -272,5 +299,13 @@ public partial class PostFXStack
 		buffer.SetGlobalTexture(fxSourceId, from);
 		buffer.SetRenderTarget(to, RenderBufferLoadAction.DontCare, RenderBufferStoreAction.Store);
 		buffer.DrawProcedural(Matrix4x4.identity, settings.Material, (int)pass,MeshTopology.Triangles, 3);
+	}
+
+	void DrawFinal(RenderTargetIdentifier from, Pass pass)
+	{
+		buffer.SetGlobalTexture(fxSourceId, from);
+		buffer.SetRenderTarget(BuiltinRenderTextureType.CameraTarget, RenderBufferLoadAction.Load, RenderBufferStoreAction.Store);
+		buffer.SetViewport(camera.pixelRect);
+		buffer.DrawProcedural(Matrix4x4.identity, settings.Material, (int)pass, MeshTopology.Triangles, 3);
 	}
 }

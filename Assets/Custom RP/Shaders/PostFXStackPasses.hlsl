@@ -62,8 +62,7 @@ float4 GetSource(float2 screenUV)
 
 float4 GetSourceBicubic(float2 screenUV)
 {
-	return SampleTexture2DBicubic(
-		TEXTURE2D_ARGS(_PostFXSource, sampler_linear_clamp), screenUV,
+	return SampleTexture2DBicubic(TEXTURE2D_ARGS(_PostFXSource, sampler_linear_clamp), screenUV, 
 		_PostFXSource_TexelSize.zwxy, 1.0, 0.0);
 }
 
@@ -139,10 +138,7 @@ float3 ColorGradeSplitToning(float3 color, bool useACES)
 
 float3 ColorGradingChannelMixer(float3 color)
 {
-	return mul(
-		float3x3(_ChannelMixerRed.rgb, _ChannelMixerGreen.rgb, _ChannelMixerBlue.rgb),
-		color
-	);
+	return mul(float3x3(_ChannelMixerRed.rgb, _ChannelMixerGreen.rgb, _ChannelMixerBlue.rgb), color);
 }
 
 float3 ColorGradingShadowsMidtonesHighlights(float3 color, bool useACES)
@@ -151,9 +147,7 @@ float3 ColorGradingShadowsMidtonesHighlights(float3 color, bool useACES)
 	float shadowsWeight = 1.0 - smoothstep(_SMHRange.x, _SMHRange.y, luminance);
 	float highlightsWeight = smoothstep(_SMHRange.z, _SMHRange.w, luminance);
 	float midtonesWeight = 1.0 - shadowsWeight - highlightsWeight;
-	return
-		color * _SMHShadows.rgb * shadowsWeight +
-		color * _SMHMidtones.rgb * midtonesWeight +
+	return color * _SMHShadows.rgb * shadowsWeight + color * _SMHMidtones.rgb * midtonesWeight + 
 		color * _SMHHighlights.rgb * highlightsWeight;
 }
 
@@ -181,11 +175,8 @@ float3 GetColorGradedLUT(float2 uv, bool useACES)
 
 float3 ApplyColorGradingLUT(float3 color)
 {
-	return ApplyLut2D(
-		TEXTURE2D_ARGS(_ColorGradingLUT, sampler_linear_clamp),
-		saturate(_ColorGradingLUTInLogC ? LinearToLogC(color) : color),
-		_ColorGradingLUTParameters.xyz
-	);
+	return ApplyLut2D(TEXTURE2D_ARGS(_ColorGradingLUT, sampler_linear_clamp),
+		saturate(_ColorGradingLUTInLogC ? LinearToLogC(color) : color), _ColorGradingLUTParameters.xyz);
 }
 
 /******************************************************/

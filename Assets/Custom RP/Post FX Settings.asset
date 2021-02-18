@@ -14,24 +14,25 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   shader: {fileID: 4800000, guid: d3d2141f0b0cae34cb7740105d9c85aa, type: 3}
   bloom:
-    maxIterations: 3
-    downscaleLimit: 43
+    maxIterations: 5
+    downscaleLimit: 32
     bicubicUpsampling: 1
-    threshold: 1.04
-    thresholdKnee: 0.301
-    intensity: 0.96
+    threshold: 1.39
+    thresholdKnee: 0.306
+    intensity: 1.85
     fadeFireflies: 1
     mode: 0
     scatter: 0.7
+    ignoreRenderScale: 1
   colorAdjustments:
-    postExposure: 0
+    postExposure: -0.3
     contrast: 0
     colorFilter: {r: 1, g: 1, b: 1, a: 1}
     hueShift: 0
     saturation: 0
   whiteBalance:
-    temperature: 0
-    tint: 0
+    temperature: 22
+    tint: 14
   splitToning:
     shadows: {r: 0.5, g: 0.5, b: 0.5, a: 1}
     highlights: {r: 0.5, g: 0.5, b: 0.5, a: 1}
@@ -49,4 +50,4 @@ MonoBehaviour:
     highlightsStart: 0.55
     highLightsEnd: 1
   toneMapping:
-    mode: 3
+    mode: 1

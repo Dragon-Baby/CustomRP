@@ -41,6 +41,8 @@ public class PostFXSettings : ScriptableObject
 
 		[Range(0.05f, 0.95f)]
 		public float scatter;
+
+		public bool ignoreRenderScale;
 	}
 
 	[SerializeField]

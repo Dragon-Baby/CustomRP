@@ -1,5 +1,6 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
+using System;
 using UnityEngine;
 using UnityEngine.Rendering;
 
@@ -8,7 +9,7 @@ using UnityEngine.Rendering;
 public class CustomRenderPipelineAsset : RenderPipelineAsset
 {
 	[SerializeField]
-	bool useDynamicBatching = true, useGPUInstancing = true, useSRPBatcher = true, useLightsPerObject = true;
+	bool DynamicBatching = true, GPUInstancing = true, SRPBatcher = true, LightsPerObject = true;
 
 	[SerializeField]
 	ShadowSettings shadows = default;
@@ -17,16 +18,48 @@ public class CustomRenderPipelineAsset : RenderPipelineAsset
 	PostFXSettings postFXSettings = default;
 
 	[SerializeField]
-	bool allowHDR = true;
+	bool HDR = true;
+
+	[SerializeField]
+	float RenderScale = 1f;
 
 	public enum ColorLUTResolution { _16 = 16, _32 = 32, _64 = 64 }
 
 	[SerializeField]
 	ColorLUTResolution colorLUTResolution = ColorLUTResolution._32;
 
+	[SerializeField]
+	Shader TAAShader = default;
+
+	[NonSerialized]
+	Material TAAMaterial;
+	public Material Material
+	{
+		get
+		{
+			if (TAAMaterial == null && TAAShader != null)
+			{
+				TAAMaterial = new Material(TAAShader);
+				TAAMaterial.hideFlags = HideFlags.HideAndDontSave;
+			}
+			return TAAMaterial;
+		}
+	}
+
+	public enum MSAAMode
+    {
+		Off = 1,
+		_2x = 2,
+		_4x = 4,
+		_8x = 8
+    }
+
+	[SerializeField]
+	MSAAMode MSAA = MSAAMode.Off;
+
 	protected override RenderPipeline CreatePipeline()
 	{
-		return new CustomRenderPipeline(allowHDR, useDynamicBatching, useGPUInstancing, useSRPBatcher, 
-				useLightsPerObject, shadows, postFXSettings, (int)colorLUTResolution);
+		return new CustomRenderPipeline(HDR, DynamicBatching, GPUInstancing, SRPBatcher, 
+				LightsPerObject, shadows, postFXSettings, (int)colorLUTResolution, (int)MSAA, RenderScale);
 	}
 }

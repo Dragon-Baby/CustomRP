@@ -77,6 +77,7 @@ partial class CameraRenderer
 		if (camera.cameraType == CameraType.SceneView)
 		{
 			ScriptableRenderContext.EmitWorldGeometryForSceneView(camera);
+			useScaledRendering = false;
 		}
 	}
 
