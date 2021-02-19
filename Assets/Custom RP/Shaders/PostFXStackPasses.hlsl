@@ -205,7 +205,6 @@ Varyings DefaultPassVertex(uint vertexID : SV_VertexID)
 
 float4 SSAOPassFragment(Varyings input) : SV_TARGET
 {
-	_SSAOKernelRadius = 1.0;
 	float4 depthNormal = SAMPLE_TEXTURE2D(_CameraDepthNormalTexture, sampler_linear_clamp, input.screenUV);
 	float3 normal = normalize((depthNormal.xyz - 0.5) * 2);
 	float depth = depthNormal.w;
@@ -223,11 +222,11 @@ float4 SSAOPassFragment(Varyings input) : SV_TARGET
 		offset = mul(glstate_matrix_projection, offset);
 		offset.xyz /= offset.w;
 		offset.xyz = offset.xyz * 0.5 + 0.5;
-		float sampleDepth = SAMPLE_TEXTURE2D(_CameraDepthNormalTexture, sampler_linear_clamp, offset.xy).w;
+		float sampleDepth = -SAMPLE_TEXTURE2D(_CameraDepthNormalTexture, sampler_linear_clamp, offset.xy).w;
 		float rangeCheck = smoothstep(0.0, 1.0, _SSAOKernelRadius / abs(depth - sampleDepth));
 		occlusion += (sampleDepth >= sample.z ? 1.0 : 0.0) * rangeCheck;
 	}
-	occlusion = max(0.01, (1.0 - (occlusion / _SSAOKernelSize)));
+	occlusion = max(0, (1.0 - (occlusion / _SSAOKernelSize)));
 	occlusion = pow(occlusion, _SSAOStrength);
 	return float4(occlusion, 0.0f, 0.0f, 0.0f);
 }
@@ -252,7 +251,7 @@ float4 SSAOCombinePassFragment(Varyings input) : SV_TARGET
 	float ao = GetSource(input.screenUV).r;
 	float3 source = GetSource2(input.screenUV).rgb;
 	float brightness = Max3(source.r, source.g, source.b);
-	float finalAO = (brightness - 0.6) ? 1 : ao;
+	float finalAO = (brightness - 0.8) ? 1 : ao;
 	source *= finalAO;
 	return float4(source, 1.0);
 }

@@ -147,18 +147,23 @@ public partial class CameraRenderer
 	void SetupDepthNormal(int MSAA)
     {
 		context.SetupCameraProperties(camera);
+		CameraClearFlags flags = camera.clearFlags;
 		int renderSamples = camera.allowMSAA ? MSAA : 1;
 		buffer.GetTemporaryRT(depthNormalTextureId, bufferSize.x, bufferSize.y, 0, FilterMode.Point, 
 			RenderTextureFormat.Default, RenderTextureReadWrite.Default, renderSamples);
-		buffer.GetTemporaryRT(positionVSTextureId, bufferSize.x, bufferSize.y, 0, FilterMode.Point,
+		buffer.GetTemporaryRT(positionVSTextureId, bufferSize.x, bufferSize.y, 0, FilterMode.Point, 
 			RenderTextureFormat.Default, RenderTextureReadWrite.Default, renderSamples);
-		buffer.GetTemporaryRT(depthBufferId, bufferSize.x, bufferSize.y, 32, FilterMode.Point,
+		buffer.GetTemporaryRT(depthBufferId, bufferSize.x, bufferSize.y, 32, FilterMode.Point, 
 			RenderTextureFormat.Depth, RenderTextureReadWrite.Default, renderSamples);
 		RenderTargetIdentifier[] colorBuffersId = new RenderTargetIdentifier[2];
 		colorBuffersId[0] = depthNormalTextureId;
 		colorBuffersId[1] = positionVSTextureId;
 		buffer.SetRenderTarget(colorBuffersId, depthBufferId);
-		buffer.ClearRenderTarget(true, true, Color.clear);
+		buffer.ClearRenderTarget(
+			flags <= CameraClearFlags.Depth,
+			flags == CameraClearFlags.Color,
+			flags == CameraClearFlags.Color ? camera.backgroundColor.linear : Color.clear
+		);
 		buffer.BeginSample(SampleName);
 		ExecuteBuffer();
 	}

@@ -29,9 +29,9 @@ Varyings DrawDepthNormalPassVertex(Attributes input)
 	UNITY_TRANSFER_INSTANCE_ID(input, output);
 	output.positionCS = TransformObjectToHClip(input.positionOS);
 	output.normalDepth.xyz = normalize(mul((float3x3)unity_MatrixITMV, input.normalOS));
-	output.normalDepth.w = -(TransformWorldToView(input.positionOS).z * _ProjectionParams.w);
 	float3 positionWS = TransformObjectToWorld(input.positionOS);
 	output.positionVS = TransformWorldToView(positionWS);
+	output.normalDepth.w = -(output.positionVS.z * _ProjectionParams.w);
 	return output;
 }
 

@@ -21,7 +21,7 @@ MonoBehaviour:
     maxIterations: 6
     downscaleLimit: 32
     bicubicUpsampling: 1
-    threshold: 0.88
+    threshold: 0.885
     thresholdKnee: 0.306
     intensity: 1.85
     fadeFireflies: 1
