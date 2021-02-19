@@ -14,6 +14,14 @@ partial class PostFXStack
         {
             settings = null;
         }
+        if (camera.cameraType == CameraType.SceneView)
+        {
+            editorNoAO = true;
+        }
+        else
+        {
+            editorNoAO = false;
+        }
     }
 #endif
 }

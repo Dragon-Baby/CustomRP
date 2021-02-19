@@ -11,6 +11,36 @@
 		#include "PostFXStackPasses.hlsl"
 		ENDHLSL
 
+		Pass
+		{
+			Name "SSAO"
+			HLSLPROGRAM
+			#pragma target 3.5
+			#pragma vertex DefaultPassVertex
+			#pragma fragment SSAOPassFragment
+			ENDHLSL
+		}
+
+		Pass
+		{
+			Name "SSAO Blur"
+			HLSLPROGRAM
+			#pragma target 3.5
+			#pragma vertex DefaultPassVertex
+			#pragma fragment SSAOBlurPassFragment
+			ENDHLSL
+		}
+
+		Pass
+		{
+			Name "SSAO Combine"
+			HLSLPROGRAM
+			#pragma target 3.5
+			#pragma vertex DefaultPassVertex
+			#pragma fragment SSAOCombinePassFragment
+			ENDHLSL
+		}
+
 		Pass 
 		{
 			Name "Bloom Add"

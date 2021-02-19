@@ -60,4 +60,49 @@ float3 NormalTangentToWorld(float3 normalTS, float3 normalWS, float4 tangentWS)
 	return TransformTangentToWorld(normalTS, tangentToWorld);
 }
 
+float2 EncodeViewNormal(float3 n)
+{
+	float kScale = 1.7777;
+	float2 enc;
+	enc = n.xy / (n.z + 1);
+	enc /= kScale;
+	enc = enc * 0.5 + 0.5;
+	return enc;
+}
+
+float2 EncodeFloatRG(float v)
+{
+	float2 kEncodeMul = float2(1.0, 255.0);
+	float kEncodeBit = 1.0 / 255.0;
+	float2 enc = kEncodeMul * v;
+	enc = frac(enc);
+	enc.x -= enc.y * kEncodeBit;
+	return enc;
+}
+
+float4 EncodeDepthNormal(float depth, float3 normal)
+{
+	float4 enc;
+	enc.xy = EncodeViewNormal(normal);
+	enc.zw = EncodeFloatRG(depth);
+	return enc;
+}
+
+float DecodeFloatRG(float2 enc)
+{
+	float2 kDecodeDot = float2(1.0, 1 / 255.0);
+	return dot(enc, kDecodeDot);
+}
+
+float3 DecodeViewNormal(float4 enc4)
+{
+	float kScale = 1.7777;
+	float3 nn = enc4.xyz * float3(2 * kScale, 2 * kScale, 0) + float3(-kScale, -kScale, 1);
+	float g = 2.0 / dot(nn.xyz, nn.xyz);
+	float3 n;
+	n.xy = g * nn.xy;
+	n.z = g - 1;
+	return n;
+}
+
 #endif

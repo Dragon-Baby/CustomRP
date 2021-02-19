@@ -8,6 +8,9 @@ public partial class PostFXStack
 {
 	enum Pass
 	{
+		SSAO,
+		SSAOBlur,
+		SSAOCombine,
 		BloomAdd,
 		BloomHorizontal,
 		BloomPrefilter,
@@ -27,6 +30,17 @@ public partial class PostFXStack
 	const string bufferName = "Post FX";
 
 	const int maxBloomPyramidLevels = 16;
+
+	int SSAOId = Shader.PropertyToID("_SSAO"),
+		SSAOBlurId = Shader.PropertyToID("_SSAOBlur"),
+		SSAOResultId = Shader.PropertyToID("_SSAOResult");
+
+	int SSAOKernelSizeId = Shader.PropertyToID("_SSAOKernelSize"),
+		SSAOKernelsId = Shader.PropertyToID("_SSAOKernels"),
+		SSAONoiseTexId = Shader.PropertyToID("_SSAONoiseTex"),
+		SSAONoiseScaleId = Shader.PropertyToID("_SSAONoiseScale"),
+		SSAOKernelRadiusId = Shader.PropertyToID("_SSAOKernelRadius"),
+		SSAOStrengthId = Shader.PropertyToID("_SSAOStrength");
 
 	int bloomBucibicUpsamplingId = Shader.PropertyToID("_BloomBicubicUpsampling"),
 		bloomIntensityId = Shader.PropertyToID("_BloomIntensity"),
@@ -77,6 +91,10 @@ public partial class PostFXStack
 
 	Vector2Int bufferSize;
 
+	bool firstInit = true;
+
+	bool editorNoAO = false;
+
 	public PostFXStack()
 	{
 		bloomPyramidId = Shader.PropertyToID("_BloomPyramid0");
@@ -95,12 +113,62 @@ public partial class PostFXStack
 		this.context = context;
 		this.camera = camera;
 		this.settings = camera.cameraType <= CameraType.SceneView ? settings : null;
+		if (firstInit)
+		{
+			SetupSSAO();
+		}
 		ApplySceneViewState();
+	}
+
+	public void SetupSSAO()
+    {
+		SSAOSettings ssao = settings.SSAO;
+		Vector4[] kernels = new Vector4[ssao.kernelSize];
+		for (int i = 0; i < ssao.kernelSize; i++)
+		{
+			float random = Random.Range(0.0f, 1.0f);
+			Vector4 sample = new Vector4(random * 2.0f - 1.0f, random * 2.0f - 1.0f, random, 0.0f);
+			sample = sample.normalized;
+			sample *= Random.Range(0.0f, 1.0f);
+			float scale = i / ssao.kernelSize;
+			scale = Mathf.Lerp(0.1f, 1.0f, scale * scale);
+			sample *= scale;
+			kernels[i] = sample;
+		}
+		buffer.SetGlobalVectorArray(SSAOKernelsId, kernels);
+
+		Vector3[] noises = new Vector3[16];
+		for (int i = 0; i < 16; i++)
+		{
+			float random = Random.Range(0.0f, 1.0f);
+			Vector3 noise = new Vector3(random * 2.0f - 1.0f, random * 2.0f - 1.0f, 0.0f);
+			noises[i] = noise;
+		}
+		Texture2D noiseTex = new Texture2D(4, 4, TextureFormat.RGB24, false, true);
+		noiseTex.filterMode = FilterMode.Point;
+		noiseTex.wrapMode = TextureWrapMode.Repeat;
+		noiseTex.SetPixelData(noises, 0, 0);
+		noiseTex.Apply();
+		buffer.SetGlobalTexture(SSAONoiseTexId, noiseTex);
+
+		Vector2 noiseScale = new Vector2(bufferSize.x / 4.0f, bufferSize.y / 4.0f);
+		buffer.SetGlobalVector(SSAONoiseScaleId, noiseScale);
+
+		firstInit = false;
 	}
 
 	public void Render(int sourceId)
 	{
-		if (DoBloom(sourceId))
+		if(DoSSAO(sourceId))
+        {
+			if(DoBloom(SSAOResultId))
+            {
+				DoColorGradingAndToneMapping(bloomResultId);
+				buffer.ReleaseTemporaryRT(bloomResultId);
+			}
+			buffer.ReleaseTemporaryRT(SSAOResultId);
+		}
+		else if (DoBloom(sourceId))
 		{
 			DoColorGradingAndToneMapping(bloomResultId);
 			buffer.ReleaseTemporaryRT(bloomResultId);
@@ -112,6 +180,31 @@ public partial class PostFXStack
 		context.ExecuteCommandBuffer(buffer);
 		buffer.Clear();
 	}
+
+	bool DoSSAO(int sourceId)
+    {
+		if(editorNoAO)
+        {
+			return false;
+        }
+		SSAOSettings ssao = settings.SSAO;
+		int width, height;
+		width = bufferSize.x / 2;
+		height = bufferSize.y / 2;
+		buffer.SetGlobalFloat(SSAOKernelRadiusId, ssao.kernelRadius);
+		buffer.SetGlobalFloat(SSAOStrengthId, ssao.strength);
+		buffer.SetGlobalInt(SSAOKernelSizeId, ssao.kernelSize);
+		buffer.GetTemporaryRT(SSAOId, width, height, 0, FilterMode.Bilinear, RenderTextureFormat.Default);
+		Draw(sourceId, SSAOId, Pass.SSAO);
+		buffer.GetTemporaryRT(SSAOBlurId, width, height, 0, FilterMode.Bilinear, RenderTextureFormat.Default);
+		Draw(SSAOId, SSAOBlurId, Pass.SSAOBlur);
+		buffer.ReleaseTemporaryRT(SSAOId);
+		buffer.SetGlobalTexture(fxSource2Id, sourceId);
+		buffer.GetTemporaryRT(SSAOResultId, width, height, 0, FilterMode.Bilinear, RenderTextureFormat.Default);
+		Draw(SSAOBlurId, SSAOResultId, Pass.SSAOCombine);
+		buffer.ReleaseTemporaryRT(SSAOBlurId);
+		return true;
+    }
 
 	bool DoBloom(int sourceId)
 	{

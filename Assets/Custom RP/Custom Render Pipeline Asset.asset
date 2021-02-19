@@ -36,4 +36,4 @@ MonoBehaviour:
   RenderScale: 2
   colorLUTResolution: 32
   TAAShader: {fileID: 4800000, guid: c892a34685207fe4c9c410a8663948c7, type: 3}
-  MSAA: 8
+  MSAA: 4

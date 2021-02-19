@@ -13,11 +13,15 @@ MonoBehaviour:
   m_Name: Post FX Settings
   m_EditorClassIdentifier: 
   shader: {fileID: 4800000, guid: d3d2141f0b0cae34cb7740105d9c85aa, type: 3}
+  ScreenSpaceAmbientOcclusion:
+    kernelSize: 64
+    kernelRadius: 1
+    strength: 1
   bloom:
-    maxIterations: 5
+    maxIterations: 6
     downscaleLimit: 32
     bicubicUpsampling: 1
-    threshold: 1.39
+    threshold: 0.88
     thresholdKnee: 0.306
     intensity: 1.85
     fadeFireflies: 1

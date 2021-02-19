@@ -10,6 +10,29 @@ public class PostFXSettings : ScriptableObject
 	Shader shader = default;
 
 	[System.Serializable]
+	public struct SSAOSettings
+    {
+		[Range(16f, 64f)]
+		public int kernelSize;
+
+		[Range(0.1f, 2.0f)]
+		public float kernelRadius;
+
+		[Range(0.5f, 5.0f)]
+		public float strength;
+    }
+
+	[SerializeField]
+	SSAOSettings ScreenSpaceAmbientOcclusion = new SSAOSettings
+	{
+		kernelSize = 64,
+		kernelRadius = 1.0f,
+		strength = 1.0f
+	};
+
+	public SSAOSettings SSAO => ScreenSpaceAmbientOcclusion;
+
+	[System.Serializable]
 	public struct BloomSettings
 	{
 

@@ -4,10 +4,15 @@
 #include "Packages/com.unity.render-pipelines.core/ShaderLibrary/Color.hlsl"
 #include "Packages/com.unity.render-pipelines.core/ShaderLibrary/Filtering.hlsl"
 
+TEXTURE2D(_CameraDepthNormalTexture);
+TEXTURE2D(_CameraPositionVSTexture);
 TEXTURE2D(_PostFXSource);
 TEXTURE2D(_PostFXSource2);
 SAMPLER(sampler_linear_clamp);
 TEXTURE2D(_ColorGradingLUT);
+
+TEXTURE2D(_SSAONoiseTex);
+SAMPLER(sampler_SSAONoiseTex);
 
 struct Varyings
 {
@@ -16,6 +21,11 @@ struct Varyings
 };
 
 float4 _PostFXSource_TexelSize;
+int _SSAOKernelSize;
+float _SSAOKernelRadius;
+float _SSAOStrength;
+float4 _SSAOKernels[64];
+float2 _SSAONoiseScale;
 bool _BloomBicubicUpsampling;
 float _BloomIntensity;
 float4 _BloomThreshold;
@@ -191,6 +201,60 @@ Varyings DefaultPassVertex(uint vertexID : SV_VertexID)
 		output.screenUV.y = 1.0 - output.screenUV.y;
 	}
 	return output;
+}
+
+float4 SSAOPassFragment(Varyings input) : SV_TARGET
+{
+	_SSAOKernelRadius = 1.0;
+	float4 depthNormal = SAMPLE_TEXTURE2D(_CameraDepthNormalTexture, sampler_linear_clamp, input.screenUV);
+	float3 normal = normalize((depthNormal.xyz - 0.5) * 2);
+	float depth = depthNormal.w;
+	float3 random = SAMPLE_TEXTURE2D(_SSAONoiseTex, sampler_linear_clamp, input.screenUV * _SSAONoiseScale).rgb;
+	float3 tangent = normalize(random - normal * dot(random, normal));
+	float3 bitangent = cross(normal, tangent);
+	float3x3 TBN = float3x3(tangent, bitangent, normal);
+	float occlusion = 0.0;
+	float3 positionVS = SAMPLE_TEXTURE2D(_CameraPositionVSTexture, sampler_linear_clamp, input.screenUV).xyz;
+	for (int i = 0; i < _SSAOKernelSize; i++)
+	{
+		float3 sample = mul(TBN, _SSAOKernels[i].xyz);
+		sample = positionVS + sample * _SSAOKernelRadius;
+		float4 offset = float4(sample, 1.0);
+		offset = mul(glstate_matrix_projection, offset);
+		offset.xyz /= offset.w;
+		offset.xyz = offset.xyz * 0.5 + 0.5;
+		float sampleDepth = SAMPLE_TEXTURE2D(_CameraDepthNormalTexture, sampler_linear_clamp, offset.xy).w;
+		float rangeCheck = smoothstep(0.0, 1.0, _SSAOKernelRadius / abs(depth - sampleDepth));
+		occlusion += (sampleDepth >= sample.z ? 1.0 : 0.0) * rangeCheck;
+	}
+	occlusion = max(0.01, (1.0 - (occlusion / _SSAOKernelSize)));
+	occlusion = pow(occlusion, _SSAOStrength);
+	return float4(occlusion, 0.0f, 0.0f, 0.0f);
+}
+
+float4 SSAOBlurPassFragment(Varyings input) : SV_TARGET
+{
+	float2 texelSize = GetSourceTexelSize().xy;
+	float result = 0.0;
+	for (int x = -2; x < 2; x++)
+	{
+		for (int y = -2; y < 2; y++)
+		{
+			float2 offset = float2(float(x), float(y)) * texelSize;
+			result += GetSource(input.screenUV).r;
+		}
+	}
+	return float4(result / (4.0 * 4.0), 0.0, 0.0, 0.0);
+}
+
+float4 SSAOCombinePassFragment(Varyings input) : SV_TARGET
+{
+	float ao = GetSource(input.screenUV).r;
+	float3 source = GetSource2(input.screenUV).rgb;
+	float brightness = Max3(source.r, source.g, source.b);
+	float finalAO = (brightness - 0.6) ? 1 : ao;
+	source *= finalAO;
+	return float4(source, 1.0);
 }
 
 float4 BloomAddPassFragment(Varyings input) : SV_TARGET

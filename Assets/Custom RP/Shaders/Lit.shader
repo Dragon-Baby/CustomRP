@@ -48,6 +48,19 @@
 		#include "LitInput.hlsl"
 		ENDHLSL
 
+		Pass
+		{
+			Tags{"LightMode" = "DrawDepthNormal"}
+
+			HLSLPROGRAM
+			#pragma target 3.5
+			#pragma multi_compile_instancing
+			#pragma vertex DrawDepthNormalPassVertex
+			#pragma fragment DrawDepthNormalPassFragment
+			#include "DrawDepthNormalPass.hlsl"
+			ENDHLSL
+		}
+
 		Pass 
 		{
 			Tags {"LightMode" = "CustomLit"}
